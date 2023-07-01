@@ -22,7 +22,7 @@ namespace LogNotificationScheduler
         {
             // Get a list of all indexes in Elasticsearch
             ConcurrentDictionary<string, string> dict = new();
-            var indexNames = _elasticClient.Indices.Get(Indices.All).Indices.Keys.Where(x=>x.Name.StartsWith("customLogger")).ToList();
+            var indexNames = _elasticClient.Indices.Get(Indices.All).Indices.Keys.Where(x => x.Name.StartsWith("customLogger")).ToList();
             //Get Mappings of emails from mongo for each index.
             var collection = _database.GetCollection<Registration>("registrations");
             foreach (var index in indexNames)
@@ -51,20 +51,25 @@ namespace LogNotificationScheduler
                     if (validRegistration != null)
                     {
                         var lastAlertTime = validRegistration.LastEmailAlert;
-                        int notificationThreshold =validRegistration.ErrorAlerts;
+                        int notificationThreshold = validRegistration.ErrorAlerts;
                         if (lastAlertTime == default)
                         {
                             searchResponse = _elasticClient.Search<LogMessage>(s => s
                                 .Index(indexName)
-                                .Query(q => q.MultiMatch(x => x.Fields(z => z.Field(e => e.Level).Field(e => e.Message)).Query("Critical")))
+                                .Query(q => q.MultiMatch(x => x.Fields(z => z.Field(e => e.Level).Field(e => e.Message)).Query("Error")))
                             );
                         }
                         else
                         {
                             searchResponse = _elasticClient.Search<LogMessage>(s => s
-                                .Index(indexName)
-                                .Query(q => q.MultiMatch(x => x.Fields(z => z.Field(e => e.Level).Field(e => e.Message)).Query("Critical")))
-                            );
+                                              .Index(indexName)
+                                              .Query(q => q
+                                                  .DateRange(dr => dr
+                                                      .Field(f => f.TimeStamp)
+                                                      .GreaterThanOrEquals(lastAlertTime)
+                                                  )
+                                              ).Query(q => q.MultiMatch(x => x.Fields(z => z.Field(e => e.Level).Field(e => e.Message)).Query("Error")))
+                                              );
                         }
 
                         if ((int)searchResponse.Total >= notificationThreshold)
@@ -84,7 +89,7 @@ namespace LogNotificationScheduler
                     }
                 }
             }
-            catch(Exception e)
+            catch (Exception e)
             {
 
             }
