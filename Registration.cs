@@ -37,7 +37,7 @@ namespace LogNotificationScheduler
         public List<Email> Emails { get; set; }
         
         [BsonElement("LastEmailAlert")]
-        public DateTime LastEmailAlert { get; set; }
+        public DateTime? LastEmailAlert { get; set; }
     }
 
     public class Email

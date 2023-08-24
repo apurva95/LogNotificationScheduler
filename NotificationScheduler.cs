@@ -28,16 +28,18 @@ namespace LogNotificationScheduler
             var collection = _database.GetCollection<Registration>("registrations");
             foreach (var index in indexNames)
             {
-                var data = collection.Find(x => x.RegistrationId == index.Name);
                 var filter = Builders<Registration>.Filter.Eq(r => r.RegistrationId, index.Name);
                 var registration = collection.Find(filter).FirstOrDefault();
-                if (!dict.ContainsKey(index.Name))
+                if (registration != null)
                 {
-                    dict.TryAdd(index.Name, data.First().EmailId);
-                }
-                else
-                {
-                    dict[index.Name] = data.First().EmailId;
+                    if (!dict.ContainsKey(index.Name))
+                    {
+                        dict.TryAdd(index.Name, registration.EmailId);
+                    }
+                    else
+                    {
+                        dict[index.Name] = registration.EmailId;
+                    }
                 }
             }
             // Query each index for log messages and filter based on conditions
@@ -49,13 +51,16 @@ namespace LogNotificationScheduler
                     var data = collection.Find(x => x.RegistrationId == index.Name);
                     var filter = Builders<Registration>.Filter.Eq(r => r.RegistrationId, index.Name);
                     var registration = collection.Find(filter).FirstOrDefault();
-                    if (!dict.ContainsKey(index.Name))
+                    if (registration != null)
                     {
-                        dict.TryAdd(index.Name, data.First().EmailId);
-                    }
-                    else
-                    {
-                        dict[index.Name] = data.First().EmailId;
+                        if (!dict.ContainsKey(index.Name))
+                        {
+                            dict.TryAdd(index.Name, data.First().EmailId);
+                        }
+                        else
+                        {
+                            dict[index.Name] = data.First().EmailId;
+                        }
                     }
                 });
                 var updateDefinitions = new List<UpdateDefinition<Registration>>();
@@ -107,6 +112,10 @@ namespace LogNotificationScheduler
                                 Subject = $"Error Notification for your Registration Id: {indexName.Name}",
                                 Body = $"Number of errors: {(int)searchResponse.Total} for time {DateTime.Now}. Please check the logs and visualize from the website."
                             };
+                            if(validRegistration.Emails == null)
+                            {
+                                validRegistration.Emails = new List<Email>();
+                            }
                             validRegistration.Emails.Add(emailNotification);
                             emailNotifications.Add(emailNotification);
                             //var update = Builders<Registration>.Update.Set(r => r.LastEmailAlert, validRegistration.LastEmailAlert)
